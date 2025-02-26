@@ -80,12 +80,12 @@ class Automation extends Model
         $parts = explode('::', $token);
         $field = array_shift($parts);
 
-        // 🔹 Se il campo è una relazione Eloquent, carica i dati
+        //Se il campo è una relazione Eloquent, carica i dati
         if (method_exists($record, $field)) {
             $relation = $record->$field();
 
             if ($relation instanceof \Illuminate\Database\Eloquent\Relations\Relation) {
-                // 🔹 Se è HasOneThrough o BelongsTo, prendi il primo elemento
+                //Se è HasOneThrough o BelongsTo, prendi il primo elemento
                 if (
                     $relation instanceof \Illuminate\Database\Eloquent\Relations\HasOneThrough ||
                     $relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -97,16 +97,16 @@ class Automation extends Model
                 }
             }
         } else {
-            // 🔹 Se non è una relazione, è un campo normale (anche JSON)
+            //Se non è una relazione, è un campo normale (anche JSON)
             $value = $record->$field ?? null;
         }
 
-        // 🔹 Se è NULL, restituisci stringa vuota
+        //Se è NULL, restituisci stringa vuota
         if (is_null($value)) {
             return '';
         }
 
-        // 🔹 Se è JSON o array, naviga nei dati
+        //Se è JSON o array, naviga nei dati
         if (is_array($value)) {
             foreach ($parts as $subfield) {
                 if (isset($value[$subfield])) {
