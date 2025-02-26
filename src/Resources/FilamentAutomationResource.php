@@ -6,6 +6,7 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Illuminate\Support\HtmlString;
 use Filament\Tables\Table;
 use Automations\FilamentAutomations\Concerns\CanSetupAutomations;
 use Automations\FilamentAutomations\Models\Automation;
@@ -48,13 +49,13 @@ class FilamentAutomationResource extends Resource
                     Forms\Components\Tabs\Tab::make('Basic')->label('Generale')->schema([
                         Forms\Components\Select::make('model_type')->label('Modello')->searchable()->reactive()->options(self::getModelTypeOptions())->required(),
                         Forms\Components\Select::make('model_id')->label('Specifica un id')->helperText('Specificando un ID, il automation verrà applicato solo a quel record.')
-                            ->searchable()->getSearchResultsUsing(fn (Forms\Get $get, ?string $search) => $get('model_type') ? self::getModelOptions(app($get('model_type')), $search) : [])->nullable(),
+                            ->searchable()->getSearchResultsUsing(fn(Forms\Get $get, ?string $search) => $get('model_type') ? self::getModelOptions(app($get('model_type')), $search) : [])->nullable(),
                         Forms\Components\TextInput::make('title')->label('Titolo')->autofocus()->required(),
                         Forms\Components\Toggle::make('enabled')->label('Abilitato')->inline(false)->default(true)->required(),
                         Forms\Components\Textarea::make('description')->label('Descrizione')->nullable(),
                     ]),
                     Forms\Components\Tabs\Tab::make('Trigger')->schema([
-                        Forms\Components\Repeater::make('trigger')->schema(fn (Forms\Get $get) => [
+                        Forms\Components\Repeater::make('trigger')->schema(fn(Forms\Get $get) => [
                             Forms\Components\Select::make('event')->label('Evento')->options([
                                 'created' => 'Creato',
                                 'updated' => 'Aggiornato',
@@ -67,7 +68,7 @@ class FilamentAutomationResource extends Resource
                                     ->helperText('Quando tutte le condizioni sono soddisfatte, l\'azione verrà eseguita.')
                                     ->schema([
                                         Forms\Components\Fieldset::make('Trigger Definition')->schema([
-                                            Forms\Components\Select::make('field')->reactive()->label('Il campo')->options(fn () => $get('model_type') ? self::getModelFields(app($get('model_type'))) : [])->nullable(),
+                                            Forms\Components\Select::make('field')->reactive()->label('Il campo')->options(fn() => $get('model_type') ? self::getModelFields(app($get('model_type'))) : [])->nullable(),
                                             Forms\Components\Select::make('operator')->label('è')->options([
                                                 '===' => '===',
                                                 '==' => '==',
@@ -81,48 +82,49 @@ class FilamentAutomationResource extends Resource
                                             Forms\Components\TextInput::make('value')->label('Valore')->nullable(),
                                         ])->columns(3),
                                     ]),
-                            ])->visible(fn (Forms\Get $get) => $get('event') !== 'deleted'),
+                            ])->visible(fn(Forms\Get $get) => $get('event') !== 'deleted'),
                         ])->maxItems(1)->minItems(1)->columns(1),
                     ]),
                     Forms\Components\Tabs\Tab::make('Actions')->label('Azioni')->schema([
-                        // Forms\Components\Placeholder::make('placeholder')->content('Le azioni vengono eseguite nell\'ordine in cui sono elencate.')->columns(1),
-                        //voglio mostrare tutte la colonne come smart tag per fare in modo che l'utente possa scegliere l'azione da eseguire
-                        Forms\Components\Placeholder::make('placeholder')->label('Variabili disponibili')->content(function (Forms\Get $get) {
+                        Forms\Components\Placeholder::make('placeholder')
+                        ->label('Variabili disponibili')->content(function (Forms\Get $get) {
                             //uso la funzione getModelFields per ottenere i campi del modello
                             $modelFields = $get('model_type') ? self::getModelFields(app($get('model_type'))) : [];
                             //devo ritornare come stringa, per ora è un array
                             $modelFieldsString = '';
                             foreach ($modelFields as $key => $value) {
-                                $modelFieldsString .= '{{' . $key . '}} ';
+                                $modelFieldsString .= '<span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-500/10 ring-inset">{{' . $key . '}}</span> ';
                             }
-                            return $modelFieldsString;
+                            return new HtmlString($modelFieldsString);
                         })->columns(1),
-                        Forms\Components\Repeater::make('actions')->schema([
-                            Forms\Components\Select::make('action_class')->live()
-                                ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => $set('action_class', $get('action_class')))
-                                ->label('Azioni da eseguire')->options(self::getActionOptions())->required(),
-                            //dati aggiuntivi per l'azione
-                            Forms\Components\Group::make()->schema(function (Forms\Get $get) {
-                                return self::getActionFormByClass($get('action_class'));
-                            })->visible(fn ($get) => $get('action_class') !== ''),
+                        Forms\Components\Repeater::make('actions')
+                            ->collapsible()
+                            ->collapsed()
+                            ->itemLabel(fn(array $state): ?string => $state['action_class'] ? self::getActionOptions()[$state['action_class']] : null)
+                            ->schema([
+                                Forms\Components\Select::make('action_class')->live()->afterStateUpdated(fn(Forms\Get $get, Forms\Set $set) => $set('action_class', $get('action_class')))->label('Azioni da eseguire')->options(self::getActionOptions())->required(),
+                                //dati aggiuntivi per l'azione
+                                Forms\Components\Group::make()->schema(function (Forms\Get $get) {
+                                    return self::getActionFormByClass($get('action_class'));
+                                })->visible(fn($get) => $get('action_class') !== ''),
 
-                             //delay per l'azione numero e unita. es. una input numero e una select unita
-                             Forms\Components\Section::make([
-                             Forms\Components\Toggle::make('delay_enabled')->label('Esegui dopo...')->inline(false)->default(false)->live(),
-                             Forms\Components\Group::make()->schema([
-                                 Forms\Components\TextInput::make('delay_number')->label('Ritardo')->required()->default(0)->minValue(0),
-                                 Forms\Components\Select::make('delay_unit')->label('Unità')->required()
-                                 ->options([
-                                     'Seconds' => 'Secondi',
-                                     'Minutes' => 'Minuti',
-                                     'Hours' => 'Ore',
-                                     'Days' => 'Giorni',
-                                 ])->default('seconds'),
-                             ])->columns(2)->columnSpan(3)->hidden(fn ($get) => !$get('delay_enabled')),
-                             ])->columns(4),
+                                //delay per l'azione numero e unita. es. una input numero e una select unita
+                                Forms\Components\Section::make([
+                                    Forms\Components\Toggle::make('delay_enabled')->label('Esegui successivamente')->inline(false)->default(false)->live(),
+                                    Forms\Components\Group::make()->schema([
+                                        Forms\Components\TextInput::make('delay_number')->label('Ritardo')->required()->default(0)->minValue(0),
+                                        Forms\Components\Select::make('delay_unit')->label('Unità')->required()
+                                            ->options([
+                                                'Seconds' => 'Secondi',
+                                                'Minutes' => 'Minuti',
+                                                'Hours' => 'Ore',
+                                                'Days' => 'Giorni',
+                                            ])->default('seconds'),
+                                    ])->columns(2)->columnSpan(3)->hidden(fn($get) => !$get('delay_enabled')),
+                                ])->columns(4),
 
 
-                        ])->columns(1),
+                            ])->columns(1),
                     ]),
                 ])->columnSpanFull(),
             ]);
@@ -147,6 +149,7 @@ class FilamentAutomationResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ReplicateAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
