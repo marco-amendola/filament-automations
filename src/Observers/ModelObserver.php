@@ -12,13 +12,12 @@ class ModelObserver
         if (! method_exists($model, 'getAutomations')) {
             return;
         }
-
         $automations = $model->getAutomations();
 
         $automations
             ->filter(fn (Automation $automation) => $automation->trigger[0]['event'] === $event)
             ->each(function (Automation $automation) use ($model) {
-                if ($automation->shouldTrigger($model)) {
+                if ($automation->shouldTrigger($model) && $automation->enabled) {
                     $automation->runActions($model);
                 }
             });

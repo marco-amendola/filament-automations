@@ -70,6 +70,7 @@ class FilamentAutomationResource extends Resource
                                         Forms\Components\Fieldset::make('Trigger Definition')->schema([
                                             Forms\Components\Select::make('field')->reactive()->label('Il campo')->options(fn() => $get('model_type') ? self::getModelFields(app($get('model_type'))) : [])->nullable(),
                                             Forms\Components\Select::make('operator')->label('è')->options([
+                                                'contains' => 'contiene',
                                                 '===' => '===',
                                                 '==' => '==',
                                                 '!=' => '!=',
@@ -100,7 +101,16 @@ class FilamentAutomationResource extends Resource
                         Forms\Components\Repeater::make('actions')
                             ->collapsible()
                             ->collapsed()
-                            ->itemLabel(fn(array $state): ?string => $state['action_class'] ? self::getActionOptions()[$state['action_class']] : null)
+                            // ->itemLabel(fn(array $state): ?string => $state['action_class'] ? dd($state) : null)
+                            ->itemLabel(function (array $state, $component): ?string {
+                                if (!$state['action_class']) {
+                                    return null;
+                                }
+                                $key = array_search($state, $component->getState());
+                                $index = array_search($key, array_keys($component->getState()));
+
+                                return $state['action_class'] ? '#' . ($index + 1) . ' - ' . self::getActionOptions()[$state['action_class']] : null;
+                            })
                             ->schema([
                                 Forms\Components\Select::make('action_class')->live()->afterStateUpdated(fn(Forms\Get $get, Forms\Set $set) => $set('action_class', $get('action_class')))->label('Azioni da eseguire')->options(self::getActionOptions())->required(),
                                 //dati aggiuntivi per l'azione

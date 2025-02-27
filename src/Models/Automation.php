@@ -19,27 +19,33 @@ class Automation extends Model
 
     public function shouldTrigger(Model $model): bool
     {
-        // All Triggers must return true
         return collect($this->trigger[0]['triggers'])->map(function ($trigger) use ($model) {
             $field = $trigger['field'];
             $operator = $trigger['operator'];
             $value = $trigger['value'];
 
-            $modelValue = $model->{$field};
+            // Controllo se il valore è effettivamente cambiato
+            if ($model->wasChanged($field)) {
+                $modelValue = $model->getAttribute($field);
 
-            return match ($operator) {
-                '==' => $modelValue == $value,
-                '===' => $modelValue === $value,
-                '!=' => $modelValue != $value,
-                '!==' => $modelValue !== $value,
-                '>' => $modelValue > $value,
-                '<' => $modelValue < $value,
-                '>=' => $modelValue >= $value,
-                '<=' => $modelValue <= $value,
-                default => false,
-            };
+                return match ($operator) {
+                    'contains' => str_contains($modelValue, $value),
+                    '==' => $modelValue == $value,
+                    '===' => $modelValue === $value,
+                    '!=' => $modelValue != $value,
+                    '!==' => $modelValue !== $value,
+                    '>' => $modelValue > $value,
+                    '<' => $modelValue < $value,
+                    '>=' => $modelValue >= $value,
+                    '<=' => $modelValue <= $value,
+                    default => false,
+                };
+            }
+
+            return false; // Se il campo non è cambiato, l'azione non si attiva
         })->filter(fn($trigger) => $trigger === true)->count() === count($this->trigger[0]['triggers']);
     }
+
     public function runActions(Model $model): void
     {
         collect($this->actions)->each(function ($action) use ($model) {
@@ -82,7 +88,7 @@ class Automation extends Model
         if (method_exists($record, $field)) {
             $relation = $record->$field();
             if ($relation instanceof \Illuminate\Database\Eloquent\Relations\Relation) {
-                if (//Se è HasOneThrough o BelongsTo, prendi il primo elemento
+                if ( //Se è HasOneThrough o BelongsTo, prendi il primo elemento
                     $relation instanceof \Illuminate\Database\Eloquent\Relations\HasOneThrough ||
                     $relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsTo
                 ) {
@@ -97,9 +103,9 @@ class Automation extends Model
             $value = $record->$field ?? null;
         }
 
-        //Se è NULL, restituisci stringa vuota
+        //Se è NULL, restituisci stringa null
         if (is_null($value)) {
-            return '';
+            return "null";
         }
 
         //Se è JSON o array, naviga nei dati
@@ -108,7 +114,7 @@ class Automation extends Model
                 if (isset($value[$subfield])) {
                     $value = $value[$subfield];
                 } else {
-                    return '';
+                    return "null";
                 }
             }
         }
