@@ -87,16 +87,16 @@ class FilamentAutomationResource extends Resource
                     ]),
                     Forms\Components\Tabs\Tab::make('Actions')->label('Azioni')->schema([
                         Forms\Components\Placeholder::make('placeholder')
-                        ->label('Variabili disponibili')->content(function (Forms\Get $get) {
-                            //uso la funzione getModelFields per ottenere i campi del modello
-                            $modelFields = $get('model_type') ? self::getModelFields(app($get('model_type'))) : [];
-                            //devo ritornare come stringa, per ora è un array
-                            $modelFieldsString = '';
-                            foreach ($modelFields as $key => $value) {
-                                $modelFieldsString .= '<span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-500/10 ring-inset">{{' . $key . '}}</span> ';
-                            }
-                            return new HtmlString($modelFieldsString);
-                        })->columns(1),
+                            ->label('Variabili disponibili')->content(function (Forms\Get $get) {
+                                //uso la funzione getModelFields per ottenere i campi del modello
+                                $modelFields = $get('model_type') ? self::getModelFields(app($get('model_type'))) : [];
+                                //devo ritornare come stringa, per ora è un array
+                                $modelFieldsString = '';
+                                foreach ($modelFields as $key => $value) {
+                                    $modelFieldsString .= '<span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-500/10 ring-inset">{{' . $key . '}}</span> ';
+                                }
+                                return new HtmlString($modelFieldsString);
+                            })->columns(1),
                         Forms\Components\Repeater::make('actions')
                             ->collapsible()
                             ->collapsed()
@@ -134,15 +134,21 @@ class FilamentAutomationResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\IconColumn::make('enabled')->label('Abilitato')->sortable()->toggleable(),
-                Tables\Columns\TextColumn::make('title')->label('Titolo')->searchable()->sortable()->toggleable(),
-                Tables\Columns\TextColumn::make('model_type')->label('Tipo')->searchable()->sortable()->toggleable(),
-                Tables\Columns\TextColumn::make('model_type')->label('Tipo')->searchable()->sortable()->toggleable(),
-                Tables\Columns\TextColumn::make('trigger')->label('Quando')->toggleable()->getStateUsing(function ($record) {
+                Tables\Columns\ToggleColumn::make('enabled')->label('Abilitato')->sortable(),
+                Tables\Columns\TextColumn::make('title')->label('Titolo')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('description')->label('Descrizione')->tooltip(function (Tables\Columns\TextColumn $column): ?string {
+                    $state = $column->getState();
+                    if (strlen($state) <= $column->getCharacterLimit()) {
+                        return null;
+                    }
+                    return $state;
+                })->limit(25)->searchable(),
+                Tables\Columns\TextColumn::make('model_type')->label('Tipo')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('model_type')->label('Tipo')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('trigger')->label('Quando')->getStateUsing(function ($record) {
                     return $record->trigger[0]['event'];
                 }),
 
-                Tables\Columns\TextColumn::make('description')->searchable(),
             ])
             ->filters([
                 //

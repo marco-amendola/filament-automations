@@ -43,10 +43,9 @@ class Automation extends Model
     public function runActions(Model $model): void
     {
         collect($this->actions)->each(function ($action) use ($model) {
-            // 1️⃣ Sostituiamo tutti i tag con i valori reali
+            // sostituzione tags con valori
             $action = array_map(fn($value) => is_string($value) ? $this->replaceSmartTags($model, $value) : $value, $action);
 
-            // 2️⃣ Recuperiamo la classe dell'azione
             $actionClass = $action['action_class'];
 
             if (!class_exists($actionClass)) {
@@ -54,7 +53,6 @@ class Automation extends Model
                 return;
             }
 
-            // 3️⃣ Gestione del delay
             $has_delay = $action['delay_enabled'];
             $delay_number = (int) $action['delay_number'];
 
@@ -83,10 +81,8 @@ class Automation extends Model
         //Se il campo è una relazione Eloquent, carica i dati
         if (method_exists($record, $field)) {
             $relation = $record->$field();
-
             if ($relation instanceof \Illuminate\Database\Eloquent\Relations\Relation) {
-                //Se è HasOneThrough o BelongsTo, prendi il primo elemento
-                if (
+                if (//Se è HasOneThrough o BelongsTo, prendi il primo elemento
                     $relation instanceof \Illuminate\Database\Eloquent\Relations\HasOneThrough ||
                     $relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsTo
                 ) {
