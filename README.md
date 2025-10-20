@@ -1,6 +1,6 @@
 # Add automations to your filament app
 This plugin lets you add automations to your filament app. You can attach triggers and dispatchable actions to your
-automations. The plugin will automatically execute the actions when the trigger conditions are met.
+automations. The plugin will automatically execute the actions when the trigger conditions are met, you can use smart tags in {{variable_name}} in your actions for more compelex actions.
 
 ## Table of Contents
 - [Installation](#installation)
